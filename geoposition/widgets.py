@@ -1,9 +1,9 @@
 from __future__ import unicode_literals
 
 import json
+import six
 from django import forms
 from django.template.loader import render_to_string
-from django.utils import six
 from django.utils.translation import ugettext_lazy as _
 from .conf import settings
 

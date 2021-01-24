@@ -1,58 +1,72 @@
 from __future__ import unicode_literals
 
-from django.db import models
-from django.utils.six import with_metaclass
+import json
+import six
+from django import forms
+from django.template.loader import render_to_string
 from django.utils.translation import ugettext_lazy as _
-from django.utils.encoding import smart_text
 
-from . import Geoposition
-from .forms import GeopositionField as GeopositionFormField
+from .conf import settings
 
 
-class GeopositionField(models.Field):
-    description = _("A geoposition (latitude and longitude)")
+class GeopositionWidget(forms.MultiWidget):
+    template_name = 'geoposition/widgets/geoposition.html'
 
-    def __init__(self, *args, **kwargs):
-        kwargs['max_length'] = 42
-        super(GeopositionField, self).__init__(*args, **kwargs)
+    def __init__(self, attrs=None):
+        widgets = (
+            forms.TextInput(),
+            forms.TextInput(),
+        )
+        super(GeopositionWidget, self).__init__(widgets, attrs)
 
-    def get_internal_type(self):
-        return 'CharField'
+    def decompress(self, value):
+        if isinstance(value, six.text_type):
+            return value.rsplit(',')
+        if value:
+            return [value.latitude, value.longitude]
+        return [None, None]
 
-    def to_python(self, value):
-        if not value or value == 'None':
-            return None
-        if isinstance(value, Geoposition):
-            return value
-        if isinstance(value, list):
-            return Geoposition(value[0], value[1])
-
-        # default case is string
-        value_parts = value.rsplit(',')
-        try:
-            latitude = value_parts[0]
-        except IndexError:
-            latitude = '0.0'
-        try:
-            longitude = value_parts[1]
-        except IndexError:
-            longitude = '0.0'
-
-        return Geoposition(latitude, longitude)
-
-    def from_db_value(self, value, expression, connection, context):
-        return self.to_python(value)
-
-    def get_prep_value(self, value):
-        return str(value)
-
-    def value_to_string(self, obj):
-        value = self._get_val_from_obj(obj)
-        return smart_text(value)
-
-    def formfield(self, **kwargs):
-        defaults = {
-            'form_class': GeopositionFormField
+    def get_config(self):
+        return {
+            'map_widget_height': settings.MAP_WIDGET_HEIGHT or 500,
+            'map_options': json.dumps(settings.MAP_OPTIONS),
+            'marker_options': json.dumps(settings.MARKER_OPTIONS),
         }
-        defaults.update(kwargs)
-        return super(GeopositionField, self).formfield(**defaults)
+
+
+    def get_context(self, name, value, attrs):
+        # Django 1.11 and up
+        context = super(GeopositionWidget, self).get_context(name, value, attrs)
+        context['latitude'] = {
+            'widget': context['widget']['subwidgets'][0],
+            'label': _("latitude"),
+        }
+        context['longitude'] = {
+            'widget': context['widget']['subwidgets'][1],
+            'label': _("longitude"),
+        }
+        context['config'] = self.get_config()
+        return context
+
+    def format_output(self, rendered_widgets):
+        # Django 1.10 and down
+        return render_to_string('geoposition/widgets/geoposition.html', {
+            'latitude': {
+                'html': rendered_widgets[0],
+                'label': _("latitude"),
+            },
+            'longitude': {
+                'html': rendered_widgets[1],
+                'label': _("longitude"),
+            },
+            'config': self.get_config(),
+        })
+
+    class Media:
+        js = (
+            '//maps.google.com/maps/api/js?key=%s' % settings.GOOGLE_MAPS_API_KEY,
+            'geoposition/geoposition.js',
+        )
+        css = {
+            'all': ('geoposition/geoposition.css',)
+        }
