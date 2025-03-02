@@ -1,0 +1,17 @@
+{% load i18n %}
+<div class="geoposition-widget" id="{{ widget.attrs.id }}" data-map-widget-height="{{ widget.config.map_widget_height }}" data-map-options="{{ widget.config.map_options }}" data-marker-options="{{ widget.config.marker_options }}">
+    <div class="row">
+        <div class="form-group col-md-4">
+            <label class="col-form-label" for="label">{% trans 'Latitude' %}</label>
+            <input type="text" class="form-control geoposition" id="id_geoposition_0" name="geoposition_0" placeholder="{% trans 'Latitude' %}">
+        </div>
+        <div class="form-group col-md-4">
+            <label class="col-form-label" for="location">{% trans 'Longitude' %}</label>
+            <input type="text" class="form-control geoposition" id="id_geoposition_1" name="geoposition_1" placeholder="{% trans 'Longitude' %}">
+        </div>
+        <div class="form-group col-md-4">
+            <button style="height: 35px; margin-top: 35px; margin-left: 3px; width: 98%" type="button" id="geoposition-save"  class="btn btn-outline-primary">{% trans 'Save Changes' %}</button>
+        </div>
+    </div>
+</div>
+
